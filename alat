@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Panel - Upload Excel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+  <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 20px; }
+    h2 { text-align:center; margin-bottom: 15px; }
+    #uploadExcel { margin-bottom: 15px; }
+    table.dataTable thead { background:#2563eb; color:white; }
+    button { margin-top: 10px; padding: 6px 12px; border:none; background:#2563eb; color:white; cursor:pointer; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <h2>📊 Admin Panel - Data ALBER</h2>
+  <input type="file" id="uploadExcel" accept=".xlsx,.xls,.csv" />
+  <br>
+  <button id="saveJson" style="display:none;">💾 Simpan JSON</button>
+  <br><br>
+  <table id="alberTable" class="display nowrap" style="width:100%">
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+<script>
+let lastData = [];
+function renderTable(headers, rows) {
+  let thead = "<tr><th>No</th>";
+  headers.forEach(h => thead += `<th>${h}</th>`);
+  thead += "</tr>";
+  document.getElementById("tableHead").innerHTML = thead;
+  let tbody = "";
+  rows.forEach((r, idx) => {
+    tbody += "<tr><td>"+(idx+1)+"</td>";
+    headers.forEach((h,i) => {
+      let val = r[i] ?? "";
+      if (val instanceof Date && !isNaN(val)) {
+        val = val.toLocaleDateString("id-ID");
+      }
+      tbody += `<td>${val}</td>`;
+    });
+    tbody += "</tr>";
+  });
+  document.getElementById("tableBody").innerHTML = tbody;
+  if ($.fn.DataTable.isDataTable("#alberTable")) {
+    $('#alberTable').DataTable().clear().destroy();
+  }
+  $('#alberTable').DataTable();
+  document.getElementById("saveJson").style.display = "inline-block";
+  lastData = { headers, rows: rows.map(r => r.map(val => 
+    (val instanceof Date && !isNaN(val)) ? val.toLocaleDateString("id-ID") : val
+  ))};
+}
+document.getElementById('uploadExcel').addEventListener('change', function(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const data = new Uint8Array(ev.target.result);
+    const wb = XLSX.read(data, { type:'array', cellDates:true, raw:false });
+    const sheetName = wb.SheetNames.includes("Data ALBER") ? "Data ALBER" : wb.SheetNames[0];
+    const sheet = wb.Sheets[sheetName];
+    let aoa = XLSX.utils.sheet_to_json(sheet, { header:1, defval:"" });
+    let headers = aoa[0];         
+    let rows = aoa.slice(2);      
+    renderTable(headers, rows);
+  };
+  reader.readAsArrayBuffer(file);
+});
+document.getElementById("saveJson").addEventListener("click", function() {
+  if (!lastData || !lastData.headers) return;
+  const json = JSON.stringify(lastData, null, 2);
+  const blob = new Blob([json], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "data.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
