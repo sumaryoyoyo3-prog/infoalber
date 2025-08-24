@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Alat Berat Bangka Selatan</title>
+
+  <!-- DataTables & Buttons -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
+    header { background: #1e3a8a; color: white; padding: 20px; text-align: center; }
+    header img { height: 80px; margin-bottom: 10px; }
+    .stats { display: flex; justify-content: space-around; flex-wrap: wrap; margin: 20px; }
+    .card { background: #3498db; color: white; padding: 20px; border-radius: 8px; width: 30%; margin: 10px; text-align: center; }
+    .card:nth-child(2) { background: #e67e22; }
+    .card:nth-child(3) { background: #2ecc71; }
+    .filter, .grafik, .actions { text-align: center; margin: 20px; }
+    table { width: 90%; margin: auto; background: white; }
+    @media screen and (max-width: 768px) {
+      .stats { flex-direction: column; align-items: center; }
+      .card { width: 90%; }
+      table { width: 100%; font-size: 14px; }
+      header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Coat_of_arms_of_Bangka_Belitung.png/200px-Coat_of_arms_of_Bangka_Belitung.png" alt="Logo Babel">
+  <h1>Dashboard Alat Berat Wajib Pajak</h1>
+  <p>Kabupaten Bangka Selatan • Update: 24 Agustus 2025</p>
+</header>
+
+<section class="stats">
+  <div class="card">
+    <h2>🔢 Total Wajib Pajak</h2>
+    <p>12</p>
+  </div>
+  <div class="card">
+    <h2>🚜 Total Alat Berat</h2>
+    <p>18</p>
+  </div>
+  <div class="card">
+    <h2>📍 Lokasi Terdata</h2>
+    <p>7 Kecamatan</p>
+  </div>
+</section>
+
+<div class="filter">
+  <label for="filterJenis">Jenis:</label>
+  <select id="filterJenis" onchange="filterGabungan()">
+    <option value="">Semua</option>
+    <option value="Excavator">Excavator</option>
+    <option value="Bulldozer">Bulldozer</option>
+    <option value="Wheel Loader">Wheel Loader</option>
+  </select>
+
+  <label for="filterStatus">Status Pajak:</label>
+  <select id="filterStatus" onchange="filterGabungan()">
+    <option value="">Semua</option>
+    <option value="Sudah Bayar">Sudah Bayar</option>
+    <option value="Belum Bayar">Belum Bayar</option>
+  </select>
+</div>
+
+<div class="actions">
+  <button onclick="window.print()" style="padding:10px 20px; background:#1e3a8a; color:white; border:none; border-radius:5px;">🖨️ Cetak Laporan</button>
+  <button onclick="kirimEmail()" style="padding:10px 20px; background:#e74c3c; color:white; border:none; border-radius:5px;">📩 Kirim Pengingat</button>
+</div>
+
+<table id="alberTable" class="display">
+  <thead>
+    <tr>
+      <th>Nama WP</th>
+      <th>Alamat</th>
+      <th>Jenis</th>
+      <th>Merk</th>
+      <th>Model</th>
+      <th>Tahun</th>
+      <th>Status Pajak</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>PT. Mentari Sawit Makmur</td>
+      <td>Dusun 003 Desa Ranggas</td>
+      <td>Wheel Loader</td>
+      <td>XCMG</td>
+      <td>LW 300 KN</td>
+      <td>2022</td>
+      <td>Belum Bayar</td>
+    </tr>
+    <tr>
+      <td>PT. Bumi Sawit Sukses Pratama</td>
+      <td>Desa Simpang Rimba</td>
+      <td>Excavator</td>
+      <td>Hitachi</td>
+      <td>ZX 210 F-5G</td>
+      <td>2019</td>
+      <td>Sudah Bayar</td>
+    </tr>
+    <!-- Tambahkan data lainnya -->
+  </tbody>
+</table>
+
+<div class="grafik">
+  <canvas id="grafikJenis" width="600" height="300"></canvas>
+</div>
+
+<script>
+  $(document).ready(function() {
+    window.table = $('#alberTable').DataTable({
+      dom: 'Bfrtip',
+      buttons: ['excelHtml5', 'pdfHtml5', 'print']
+    });
+
+    // Grafik Dinamis
+    const dataAlber = [
+      { jenis: "Wheel Loader" },
+      { jenis: "Excavator" },
+      { jenis: "Excavator" },
+      { jenis: "Bulldozer" }
+    ];
+    const countJenis = {};
+    dataAlber.forEach(item => {
+      countJenis[item.jenis] = (countJenis[item.jenis] || 0) + 1;
+    });
+    new Chart(document.getElementById("grafikJenis"), {
+      type: "bar",
+      data: {
+        labels: Object.keys(countJenis),
+        datasets: [{
+          label: "Jumlah per Jenis",
+          data: Object.values(countJenis),
+          backgroundColor: "#1e3a8a"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: "Distribusi Alat Berat per Jenis" }
+        }
+      }
+    });
+  });
+
+  function filterGabungan() {
+    const jenis = document.getElementById("filterJenis").value.toLowerCase();
+    const status = document.getElementById("filterStatus").value.toLowerCase();
+
+    window.table.rows().every(function() {
+      const data = this.data();
+      const matchJenis = jenis === "" || data[2].toLowerCase().includes(jenis);
+      const matchStatus = status === "" || data[6].toLowerCase().includes(status);
+      this.node().style.display = (matchJenis && matchStatus) ? "" : "none";
+    });
+  }
+
+  function kirimEmail() {
+    const dataBelumBayar = [
+      { nama: "PT. Mentari Sawit Makmur", email: "admin@mentarisawit.co.id" }
+      // Tambahkan email WP lainnya
+    ];
+    dataBelumBayar.forEach(wp => {
+      console.log(`Mengirim email ke ${wp.nama} (${wp.email})`);
+    });
+    alert
